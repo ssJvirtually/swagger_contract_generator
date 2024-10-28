@@ -5,6 +5,7 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.github.javaparser.StaticJavaParser;
 import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
+import com.github.javaparser.ast.body.EnumDeclaration;
 import com.github.javaparser.ast.type.ArrayType;
 import com.github.javaparser.ast.type.ClassOrInterfaceType;
 import com.github.javaparser.ast.type.Type;
@@ -24,6 +25,7 @@ public class ClassToSwaggerConverter {
             "List", "ArrayList", "LinkedList", "Set", "HashSet", "TreeSet", "Collection"
     ));
     private static Map<String, ClassOrInterfaceDeclaration> classCache = new HashMap<>();
+    private static Map<String, EnumDeclaration> enumCache = new HashMap<>();
     private static CombinedTypeSolver typeSolver;
 
     static {
@@ -74,13 +76,8 @@ public class ClassToSwaggerConverter {
     }
 
     public static void main(String[] args) {
-//        if (args.length != 2) {
-//            System.out.println("Usage: java ClassToSwaggerConverter <source-directory> <output-file.yaml>");
-//            return;
-//        }
-
         try {
-            String sourceDir = "E:\\work\\java-concepts\\src\\main\\java\\com\\java\\examples\\temp\\model";
+            String sourceDir = "C:\\Users\\jskr4\\Downloads\\swagger_contract_generator\\src\\main\\java\\org\\example\\temp\\model";
             String outputFile = "comp.yaml";
 
             // Initialize type solver
@@ -93,8 +90,8 @@ public class ClassToSwaggerConverter {
             JavaSymbolSolver symbolSolver = new JavaSymbolSolver(typeSolver);
             StaticJavaParser.getConfiguration().setSymbolResolver(symbolSolver);
 
-            // First pass: cache all classes
-            cacheClasses(sourceDir);
+            // First pass: cache all classes and enums
+            cacheTypesFromDirectory(sourceDir);
 
             // Second pass: process classes and generate schemas
             Map<String, Map<String, Object>> schemas = processDirectory(sourceDir);
@@ -104,15 +101,20 @@ public class ClassToSwaggerConverter {
         }
     }
 
-    private static void cacheClasses(String sourceDir) throws Exception {
+    private static void cacheTypesFromDirectory(String sourceDir) throws Exception {
         Files.walk(Paths.get(sourceDir))
                 .filter(Files::isRegularFile)
                 .filter(path -> path.toString().endsWith(".java"))
                 .forEach(path -> {
                     try {
                         CompilationUnit cu = StaticJavaParser.parse(path);
+                        // Cache classes
                         cu.findAll(ClassOrInterfaceDeclaration.class).forEach(classDecl -> {
                             classCache.put(classDecl.getNameAsString(), classDecl);
+                        });
+                        // Cache enums
+                        cu.findAll(EnumDeclaration.class).forEach(enumDecl -> {
+                            enumCache.put(enumDecl.getNameAsString(), enumDecl);
                         });
                     } catch (Exception e) {
                         e.printStackTrace();
@@ -123,11 +125,39 @@ public class ClassToSwaggerConverter {
     private static Map<String, Map<String, Object>> processDirectory(String sourceDir) throws Exception {
         Map<String, Map<String, Object>> schemas = new LinkedHashMap<>();
 
+        // Process enums first
+        for (EnumDeclaration enumDecl : enumCache.values()) {
+            processEnum(enumDecl, schemas);
+        }
+
+        // Then process classes
         for (ClassOrInterfaceDeclaration classDecl : classCache.values()) {
             processClass(classDecl, schemas);
         }
 
         return schemas;
+    }
+
+    private static void processEnum(EnumDeclaration enumDecl, Map<String, Map<String, Object>> schemas) {
+        String enumName = enumDecl.getNameAsString();
+
+        Map<String, Object> schema = new LinkedHashMap<>();
+        schema.put("type", "string");
+
+        // Extract enum constants
+        List<String> enumValues = new ArrayList<>();
+        enumDecl.getEntries().forEach(entry -> {
+            enumValues.add(entry.getNameAsString());
+        });
+
+        schema.put("enum", enumValues);
+
+        // Add description if JavaDoc is present
+        enumDecl.getJavadoc().ifPresent(javadoc -> {
+            schema.put("description", javadoc.getDescription().toText());
+        });
+
+        schemas.put(enumName, schema);
     }
 
     private static void processClass(ClassOrInterfaceDeclaration classDecl,
@@ -143,16 +173,18 @@ public class ClassToSwaggerConverter {
 
         schema.put("type", "object");
 
+        // Add description if JavaDoc is present
+        classDecl.getJavadoc().ifPresent(javadoc -> {
+            schema.put("description", javadoc.getDescription().toText());
+        });
+
         // Process parent classes
         try {
-            // Get extended types (parent classes)
             classDecl.getExtendedTypes().forEach(parentType -> {
                 String parentName = parentType.getNameAsString();
                 if (classCache.containsKey(parentName)) {
-                    // Process parent class if not already processed
                     processClass(classCache.get(parentName), schemas);
 
-                    // Add parent properties to current class
                     Map<String, Object> parentSchema = schemas.get(parentName);
                     if (parentSchema != null && parentSchema.containsKey("properties")) {
                         @SuppressWarnings("unchecked")
@@ -172,6 +204,10 @@ public class ClassToSwaggerConverter {
 
             Map<String, Object> propertySchema = createPropertySchema(fieldType);
             if (propertySchema != null) {
+                // Add field description if JavaDoc is present
+                field.getJavadoc().ifPresent(javadoc -> {
+                    propertySchema.put("description", javadoc.getDescription().toText());
+                });
                 properties.put(fieldName, propertySchema);
             }
         });
@@ -195,6 +231,12 @@ public class ClassToSwaggerConverter {
         if (type.isClassOrInterfaceType()) {
             ClassOrInterfaceType classType = type.asClassOrInterfaceType();
             String typeName = classType.getNameAsString();
+
+            // Check if it's an enum
+            if (enumCache.containsKey(typeName)) {
+                schema.put("$ref", "#/components/schemas/" + typeName);
+                return schema;
+            }
 
             // Handle collection types
             if (COLLECTION_TYPES.contains(typeName)) {

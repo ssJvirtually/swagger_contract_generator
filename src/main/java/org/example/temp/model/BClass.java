@@ -10,4 +10,6 @@ public class BClass {
 
 
     DClass dClass;
+
+    Status status;
 }

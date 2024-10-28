@@ -1,6 +1,18 @@
 ---
 components:
   schemas:
+    Status:
+      type: "string"
+      enum:
+      - "ACTIVE"
+      - "INACTIVE"
+      - "PENDING"
+    CRStatus:
+      type: "string"
+      enum:
+      - "ACTIVE"
+      - "INACTIVE"
+      - "PENDING"
     CClass:
       type: "object"
       properties:
@@ -20,6 +32,8 @@ components:
           type: "number"
         dClass:
           $ref: "#/components/schemas/DClass"
+        status:
+          $ref: "#/components/schemas/Status"
     DClass:
       type: "object"
       properties:
@@ -47,3 +61,10 @@ components:
           type: "array"
           items:
             $ref: "#/components/schemas/DClass"
+    CR:
+      type: "object"
+      properties:
+        crStatus:
+          $ref: "#/components/schemas/CRStatus"
+        crId:
+          type: "string"
