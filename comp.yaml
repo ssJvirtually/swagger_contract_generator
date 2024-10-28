@@ -1,0 +1,49 @@
+---
+components:
+  schemas:
+    CClass:
+      type: "object"
+      properties:
+        a:
+          type: "string"
+        b:
+          type: "string"
+    BClass:
+      type: "object"
+      properties:
+        A:
+          type: "string"
+        B:
+          type: "object"
+        C:
+          format: "float"
+          type: "number"
+        dClass:
+          $ref: "#/components/schemas/DClass"
+    DClass:
+      type: "object"
+      properties:
+        a:
+          type: "string"
+        b:
+          type: "string"
+    AClass:
+      type: "object"
+      properties:
+        A:
+          type: "string"
+        B:
+          type: "object"
+        C:
+          format: "float"
+          type: "number"
+        b:
+          $ref: "#/components/schemas/BClass"
+        words:
+          type: "array"
+          items:
+            type: "string"
+        dClasses:
+          type: "array"
+          items:
+            $ref: "#/components/schemas/DClass"
