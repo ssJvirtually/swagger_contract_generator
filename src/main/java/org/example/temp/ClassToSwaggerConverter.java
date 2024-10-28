@@ -8,6 +8,7 @@ import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
 import com.github.javaparser.ast.body.EnumDeclaration;
 import com.github.javaparser.ast.type.ArrayType;
 import com.github.javaparser.ast.type.ClassOrInterfaceType;
+import com.github.javaparser.ast.type.PrimitiveType;
 import com.github.javaparser.ast.type.Type;
 import com.github.javaparser.symbolsolver.JavaSymbolSolver;
 import com.github.javaparser.symbolsolver.resolution.typesolvers.CombinedTypeSolver;
@@ -218,6 +219,16 @@ public class ClassToSwaggerConverter {
 
     private static Map<String, Object> createPropertySchema(Type type) {
         Map<String, Object> schema = new LinkedHashMap<>();
+
+
+        // Handle primitive types
+        if (type.isPrimitiveType()) {
+            PrimitiveType primitiveType = type.asPrimitiveType();
+            String typeName = primitiveType.asString();
+            if (TYPE_MAPPINGS.containsKey(typeName)) {
+                return new HashMap<>(TYPE_MAPPINGS.get(typeName));
+            }
+        }
 
         // Handle arrays
         if (type.isArrayType()) {
