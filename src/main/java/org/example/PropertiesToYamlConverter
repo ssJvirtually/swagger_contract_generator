@@ -1,0 +1,40 @@
+import org.yaml.snakeyaml.Yaml;
+import java.io.*;
+import java.util.*;
+
+public class PropertiesToYamlConverter {
+    public static void main(String[] args) {
+        String propertiesFilePath = "config.properties"; // Change this to your properties file path
+        String yamlFilePath = "config.yaml"; // Output YAML file
+
+        try {
+            Properties properties = new Properties();
+            try (FileInputStream fis = new FileInputStream(propertiesFilePath)) {
+                properties.load(fis);
+            }
+
+            Map<String, Object> yamlMap = new LinkedHashMap<>();
+            for (String key : properties.stringPropertyNames()) {
+                setNestedMap(yamlMap, key, properties.getProperty(key));
+            }
+
+            Yaml yaml = new Yaml();
+            try (FileWriter writer = new FileWriter(yamlFilePath)) {
+                yaml.dump(yamlMap, writer);
+            }
+
+            System.out.println("YAML file created successfully: " + yamlFilePath);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private static void setNestedMap(Map<String, Object> map, String key, String value) {
+        String[] keys = key.split("\\.");
+        Map<String, Object> currentMap = map;
+        for (int i = 0; i < keys.length - 1; i++) {
+            currentMap = (Map<String, Object>) currentMap.computeIfAbsent(keys[i], k -> new LinkedHashMap<>());
+        }
+        currentMap.put(keys[keys.length - 1], value);
+    }
+}
