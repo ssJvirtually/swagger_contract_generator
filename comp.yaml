@@ -13,6 +13,18 @@ components:
       - "ACTIVE"
       - "INACTIVE"
       - "PENDING"
+    RSENUMPS:
+      type: "string"
+      enum:
+      - "FAMILY"
+      - "FIEND"
+      - "FAMILIAR"
+    RSENUM:
+      type: "string"
+      enum:
+      - "LEND"
+      - "BORROW"
+      - "RETURN"
     CClass:
       type: "object"
       properties:
@@ -26,7 +38,8 @@ components:
         A:
           type: "string"
         B:
-          type: "object"
+          format: "int32"
+          type: "integer"
         C:
           format: "float"
           type: "number"
@@ -47,7 +60,8 @@ components:
         A:
           type: "string"
         B:
-          type: "object"
+          format: "int32"
+          type: "integer"
         C:
           format: "float"
           type: "number"
