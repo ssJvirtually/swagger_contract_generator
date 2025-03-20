@@ -9,10 +9,12 @@ import java.util.List;
 class BranchInfo {
     String branch;
     String creationTime;
+    String commitTime;
 
-    BranchInfo(String branch, String creationTime) {
+    BranchInfo(String branch, String creationTime, String commitTime) {
         this.branch = branch;
         this.creationTime = creationTime;
+        this.commitTime = commitTime;
     }
 }
 
@@ -35,7 +37,8 @@ public class GitBranchFinder {
             // Search commit in all branches
             for (BranchInfo branchInfo : branches) {
                 if (isCommitInBranch(commitIdPrefix, branchInfo.branch, repoPath)) {
-                    System.out.println(branchInfo.branch);
+                    String commitTime = getCommitTime(commitIdPrefix, repoPath);
+                    System.out.println(branchInfo.branch + " - Created: " + branchInfo.creationTime + " - Committed: " + commitTime);
                 }
             }
         } catch (Exception e) {
@@ -53,7 +56,7 @@ public class GitBranchFinder {
         while ((line = reader.readLine()) != null) {
             String[] parts = line.split(" ", 2);
             if (parts.length == 2) {
-                branches.add(new BranchInfo(parts[0], parts[1]));
+                branches.add(new BranchInfo(parts[0], parts[1], ""));
             }
         }
         process.waitFor();
@@ -77,5 +80,19 @@ public class GitBranchFinder {
             e.printStackTrace();
         }
         return false;
+    }
+
+    private static String getCommitTime(String commitId, String repoPath) {
+        try {
+            Process process = new ProcessBuilder("git", "show", "-s", "--format=%ci", commitId)
+                    .directory(new java.io.File(repoPath))
+                    .start();
+            BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+            String commitTime = reader.readLine();
+            process.waitFor();
+            return commitTime;
+        } catch (Exception e) {
+            return "Unknown";
+        }
     }
 }
