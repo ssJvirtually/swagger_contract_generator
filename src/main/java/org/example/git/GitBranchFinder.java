@@ -48,7 +48,7 @@ public class GitBranchFinder {
 
     private static List<BranchInfo> getAllBranches(String repoPath) throws Exception {
         List<BranchInfo> branches = new ArrayList<>();
-        Process process = new ProcessBuilder("git", "for-each-ref", "--sort=-creatordate", "--format=%(refname:short) %(creatordate)", "refs/heads/")
+        Process process = new ProcessBuilder("git", "for-each-ref", "--sort=-creatordate", "--format=%(refname:short) %(creatordate)", "refs/heads/", "refs/remotes/")
                 .directory(new java.io.File(repoPath))
                 .start();
         BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
