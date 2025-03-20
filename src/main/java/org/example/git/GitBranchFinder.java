@@ -3,17 +3,16 @@ package org.example.git;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 
 class BranchInfo {
     String branch;
-    String commitTime;
+    String creationTime;
 
-    BranchInfo(String branch, String commitTime) {
+    BranchInfo(String branch, String creationTime) {
         this.branch = branch;
-        this.commitTime = commitTime;
+        this.creationTime = creationTime;
     }
 }
 
@@ -28,39 +27,34 @@ public class GitBranchFinder {
         String repoPath = "E:\\work\\java-concepts";
 
         try {
-            List<String> branches = getAllBranches(repoPath);
-            List<BranchInfo> matchingBranches = new ArrayList<>();
+            List<BranchInfo> branches = getAllBranches(repoPath);
 
-            for (String branch : branches) {
-                if (isCommitInBranch(commitIdPrefix, branch, repoPath)) {
-                    String commitTime = getCommitTime(commitIdPrefix, repoPath);
-                    if (commitTime != null) {
-                        matchingBranches.add(new BranchInfo(branch, commitTime));
-                    }
+            // Sort branches by creation time in descending order
+            branches.sort(Comparator.comparing((BranchInfo b) -> b.creationTime).reversed());
+
+            // Search commit in all branches
+            for (BranchInfo branchInfo : branches) {
+                if (isCommitInBranch(commitIdPrefix, branchInfo.branch, repoPath)) {
+                    System.out.println(branchInfo.branch);
                 }
-            }
-
-            // Sort branches by commit time in descending order
-            matchingBranches.sort(Comparator.comparing((BranchInfo b) -> b.commitTime).reversed());
-
-            // Print results
-            for (BranchInfo branchInfo : matchingBranches) {
-                System.out.println(branchInfo.commitTime + " - " + branchInfo.branch);
             }
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
-    private static List<String> getAllBranches(String repoPath) throws Exception {
-        List<String> branches = new ArrayList<>();
-        Process process = new ProcessBuilder("git", "branch", "-r")
+    private static List<BranchInfo> getAllBranches(String repoPath) throws Exception {
+        List<BranchInfo> branches = new ArrayList<>();
+        Process process = new ProcessBuilder("git", "for-each-ref", "--sort=-creatordate", "--format=%(refname:short) %(creatordate)", "refs/heads/")
                 .directory(new java.io.File(repoPath))
                 .start();
         BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
         String line;
         while ((line = reader.readLine()) != null) {
-            branches.add(line.trim());
+            String[] parts = line.split(" ", 2);
+            if (parts.length == 2) {
+                branches.add(new BranchInfo(parts[0], parts[1]));
+            }
         }
         process.waitFor();
         return branches;
@@ -83,19 +77,5 @@ public class GitBranchFinder {
             e.printStackTrace();
         }
         return false;
-    }
-
-    private static String getCommitTime(String commitId, String repoPath) {
-        try {
-            Process process = new ProcessBuilder("git", "show", "-s", "--format=%ci", commitId)
-                    .directory(new java.io.File(repoPath))
-                    .start();
-            BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-            String commitTime = reader.readLine();
-            process.waitFor();
-            return commitTime;
-        } catch (Exception e) {
-            return null;
-        }
     }
 }
